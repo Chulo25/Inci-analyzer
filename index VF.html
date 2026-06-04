@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zaya · Analizador INCI</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --purple-dark: #6B5B8C;
+    --purple-mid: #8472A8;
+    --purple-light: #EDE8F5;
+    --green-sage: #7A9B76;
+    --green-light: #A8C4A0;
+    --green-pale: #EBF3E8;
+    --teal-dark: #4E7B72;
+    --teal-mid: #6D9E95;
+    --teal-pale: #E4F0EE;
+    --cream: #FAF8F4;
+    --terracotta: #C47B5A;
+    --text-dark: #2C2433;
+    --text-mid: #5A5168;
+    --text-light: #9B94A8;
+    --border: rgba(107,91,140,0.15);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Montserrat',sans-serif; background:var(--cream); color:var(--text-dark); min-height:100vh; }
+
+  header {
+    background:var(--purple-dark);
+    padding:2.5rem 2rem 2rem;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  header::before { content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px; border-radius:50%; background:rgba(122,155,118,0.2); }
+  header::after  { content:''; position:absolute; bottom:-40px; left:-40px; width:140px; height:140px; border-radius:50%; background:rgba(78,123,114,0.18); }
+  .brand-name { font-size:3rem; font-weight:300; letter-spacing:0.35em; color:#fff; text-transform:uppercase; position:relative; z-index:1; }
+  .slogan { font-size:0.95rem; font-weight:300; color:rgba(255,255,255,0.75); letter-spacing:0.05em; margin-top:0.5rem; position:relative; z-index:1; font-style:italic; }
+  .tool-label { display:inline-block; margin-top:1rem; font-size:0.72rem; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:var(--green-light); background:rgba(255,255,255,0.1); padding:4px 14px; border-radius:20px; position:relative; z-index:1; }
+
+  main { max-width:800px; margin:0 auto; padding:2rem 1.5rem 4rem; }
+  .intro { text-align:center; margin:2rem 0; }
+  .intro p { font-size:0.88rem; color:var(--text-mid); line-height:1.8; max-width:560px; margin:0 auto; font-weight:300; }
+
+  .db-badge { display:inline-flex; align-items:center; gap:6px; margin-top:0.75rem; font-size:0.72rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--teal-dark); background:var(--teal-pale); padding:4px 12px; border-radius:20px; }
+
+  .input-card { background:#fff; border:1px solid var(--border); border-radius:16px; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 2px 20px rgba(107,91,140,0.06); }
+  .input-label { font-size:0.72rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--purple-mid); margin-bottom:0.75rem; display:block; }
+  textarea { width:100%; min-height:110px; padding:0.9rem 1rem; font-family:'Montserrat',sans-serif; font-size:0.82rem; font-weight:400; color:var(--text-dark); background:var(--cream); border:1px solid var(--border); border-radius:10px; resize:vertical; line-height:1.6; outline:none; transition:border-color 0.2s; }
+  textarea:focus { border-color:var(--purple-mid); }
+  textarea::placeholder { color:var(--text-light); font-weight:300; }
+
+  .btn-row { display:flex; gap:10px; margin-top:1rem; flex-wrap:wrap; align-items:center; }
+  .btn-primary { background:var(--purple-dark); color:#fff; border:none; padding:10px 24px; border-radius:8px; font-family:'Montserrat',sans-serif; font-size:0.82rem; font-weight:600; letter-spacing:0.06em; cursor:pointer; transition:background 0.2s,transform 0.1s; }
+  .btn-primary:hover { background:var(--purple-mid); }
+  .btn-primary:active { transform:scale(0.98); }
+  .btn-secondary { background:transparent; color:var(--text-mid); border:1px solid var(--border); padding:10px 18px; border-radius:8px; font-family:'Montserrat',sans-serif; font-size:0.82rem; font-weight:500; cursor:pointer; transition:background 0.2s; }
+  .btn-secondary:hover { background:var(--green-pale); }
+
+  .search-hint { font-size:0.75rem; color:var(--text-light); margin-top:8px; }
+
+  .summary-grid { display:none; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:1.5rem; }
+  .stat-card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:1rem 1.25rem; text-align:center; box-shadow:0 2px 12px rgba(107,91,140,0.05); }
+  .stat-label { font-size:0.68rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-light); margin-bottom:6px; }
+  .stat-value { font-size:1.8rem; font-weight:300; letter-spacing:-0.02em; }
+  .stat-value.natural { color:var(--teal-dark); }
+  .stat-value.sintetico { color:var(--terracotta); }
+  .stat-value.total { color:var(--purple-dark); }
+  .stat-value.pct { color:var(--green-sage); }
+
+  .progress-wrap { display:none; background:#fff; border:1px solid var(--border); border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem; box-shadow:0 2px 12px rgba(107,91,140,0.05); }
+  .progress-label { display:flex; justify-content:space-between; font-size:0.72rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-mid); margin-bottom:8px; }
+  .progress-bar { height:8px; background:var(--green-pale); border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; background:linear-gradient(90deg,var(--green-sage),var(--teal-mid)); border-radius:4px; transition:width 0.4s ease; }
+
+  .results-list { display:flex; flex-direction:column; gap:10px; }
+  .ing-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:1.1rem 1.3rem; box-shadow:0 2px 12px rgba(107,91,140,0.04); animation:fadeUp 0.3s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .ing-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .ing-names { flex:1; min-width:0; }
+  .ing-inci { font-size:0.72rem; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-light); font-family:'Courier New',monospace; }
+  .ing-common { font-size:1rem; font-weight:500; color:var(--text-dark); margin-top:2px; }
+  .badge { flex-shrink:0; font-size:0.68rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:4px 10px; border-radius:20px; }
+  .badge.natural { background:var(--teal-pale); color:var(--teal-dark); }
+  .badge.sintetico { background:#FDF0EA; color:var(--terracotta); }
+  .badge.unknown { background:#F5F0FF; color:var(--purple-mid); }
+  .ing-funcion { font-size:0.83rem; color:var(--text-mid); line-height:1.6; font-weight:300; }
+  .ing-nota { font-size:0.75rem; color:var(--text-light); margin-top:5px; font-style:italic; line-height:1.5; }
+  .ing-controversia { margin-top:8px; font-size:0.75rem; padding:7px 12px; background:#FEF9EC; color:#8C6A1A; border-radius:8px; border-left:3px solid #D4A017; line-height:1.5; }
+  .ing-number { width:24px; height:24px; border-radius:50%; background:var(--purple-light); color:var(--purple-dark); font-size:0.68rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+
+  .not-found-note { font-size:0.72rem; color:var(--text-light); margin-top:6px; padding:6px 10px; background:var(--purple-light); border-radius:6px; }
+  .not-found-note a, .search-hint a { color:var(--purple-dark); font-weight:600; text-decoration:underline; }
+  .not-found-note a:hover, .search-hint a:hover { color:var(--teal-dark); }
+
+  footer { text-align:center; padding:2rem; font-size:0.72rem; color:var(--text-light); border-top:1px solid var(--border); letter-spacing:0.05em; }
+  footer span { color:var(--purple-mid); font-weight:600; }
+
+  @media(max-width:600px) {
+    .brand-name { font-size:2.2rem; }
+    main { padding:1.5rem 1rem 3rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-name">&#10022; Zaya &#10022;</div>
+  <div class="slogan">¿Realmente es bueno para mí?</div>
+  <div class="tool-label">Analizador de ingredientes INCI</div>
+</header>
+
+<main>
+  <div class="intro">
+    <p>Pegá la lista INCI de cualquier cosmético y descubrí qué contiene cada ingrediente, para qué sirve y si es compatible con la cosmética natural certificada (COSMOS / NATRUE).</p>
+    <div class="db-badge">&#10003; Base de datos offline · +300 ingredientes</div>
+  </div>
+
+  <div class="input-card">
+    <label class="input-label" for="inci-input">Lista INCI del producto</label>
+    <textarea id="inci-input" placeholder="Pegá la lista INCI separada por comas, barras, saltos de línea o punto y coma. Ej: Aqua, Glycerin / Niacinamide; Panthenol | Phenoxyethanol..."></textarea>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="analyzeINCI()">Analizar ingredientes</button>
+      <button class="btn-secondary" onclick="clearAll()">Limpiar</button>
+    </div>
+    <div class="search-hint">Funciona sin conexión a internet · Los ingredientes no encontrados se marcan en violeta · Consultá la base oficial <a href="https://ec.europa.eu/growth/tools-databases/cosing/" target="_blank" rel="noopener">CosIng (UE)</a></div>
+  </div>
+
+  <div class="summary-grid" id="summary-grid">
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value total" id="stat-total">—</div></div>
+    <div class="stat-card"><div class="stat-label">Naturales / aptos</div><div class="stat-value natural" id="stat-nat">—</div></div>
+    <div class="stat-card"><div class="stat-label">No naturales</div><div class="stat-value sintetico" id="stat-sin">—</div></div>
+    <div class="stat-card"><div class="stat-label">No encontrados</div><div class="stat-value" style="color:var(--purple-mid)" id="stat-unk">—</div></div>
+    <div class="stat-card"><div class="stat-label">% natural</div><div class="stat-value pct" id="stat-pct">—</div></div>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-label"><span>Perfil de naturalidad</span><span id="pct-label">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="results-list" id="results"></div>
+</main>
+
+<footer>Desarrollado por <span>Zaya Skincare</span> · Buenos Aires, Argentina</footer>
+
+<script>
+const DB = {
+  // ─── AGUA / SOLVENTES ───────────────────────────────────────────────────────
+  "AQUA": { nombre:"Agua", funcion:"Solvente universal. Base de la mayoría de fórmulas cosméticas. Hidrata y vehiculiza activos.", natural:true, nota:"Origen natural. Apta COSMOS.", categoria:"Solvente" },
+  "WATER": { nombre:"Agua", funcion:"Solvente universal.", natural:true, nota:"Origen natural.", categoria:"Solvente" },
+
+  // ─── HUMECTANTES ────────────────────────────────────────────────────────────
+  "GLYCERIN": { nombre:"Glicerina", funcion:"Humectante potente. Atrae y retiene agua en la piel, mejora suavidad y elasticidad.", natural:true, nota:"Derivada de aceites vegetales o animal. Apta COSMOS si es vegetal.", categoria:"Humectante" },
+  "GLYCEROL": { nombre:"Glicerol", funcion:"Humectante. Sinónimo de glicerina.", natural:true, nota:"Derivada de aceites vegetales.", categoria:"Humectante" },
+  "SORBITOL": { nombre:"Sorbitol", funcion:"Humectante y agente de textura. Suaviza y retiene humedad.", natural:true, nota:"Derivado de glucosa vegetal. Apto COSMOS.", categoria:"Humectante" },
+  "PANTHENOL": { nombre:"Pantenol (pro-vitamina B5)", funcion:"Humectante, cicatrizante y calmante. Penetra la piel y se convierte en ácido pantoténico.", natural:true, nota:"Derivado de vitamina B5. Versión vegetal apta COSMOS.", categoria:"Humectante / Activo" },
+  "SODIUM HYALURONATE": { nombre:"Hialuronato de sodio (ácido hialurónico)", funcion:"Humectante de alto poder. Retiene hasta 1000 veces su peso en agua. Rellena y da volumen temporal.", natural:true, nota:"Puede ser de origen biotecnológico (fermentación) o animal. El de fermentación es apto COSMOS.", categoria:"Humectante / Activo" },
+  "HYALURONIC ACID": { nombre:"Ácido hialurónico", funcion:"Humectante potente. Hidrata en profundidad y mejora la elasticidad.", natural:true, nota:"Biotecnológico (fermentación). Apto COSMOS.", categoria:"Humectante" },
+  "UREA": { nombre:"Urea", funcion:"Humectante y queratolítico. A baja concentración hidrata; a alta concentración exfolia suavemente.", natural:false, nota:"Sintética. No apta para certificación COSMOS/NATRUE.", categoria:"Humectante" },
+  "BUTYLENE GLYCOL": { nombre:"Butilenglicol", funcion:"Humectante y solvente. Ayuda a disolver activos y da textura ligera.", natural:false, nota:"Glicol sintético derivado del petróleo. No apto COSMOS.", categoria:"Humectante / Solvente", controversia:"Clasificado como irritante potencial en concentraciones altas." },
+  "PROPYLENE GLYCOL": { nombre:"Propilenglicol", funcion:"Humectante, solvente y potenciador de penetración.", natural:false, nota:"Sintético (derivado del petróleo). No apto COSMOS.", categoria:"Humectante", controversia:"Irritante en pieles sensibles. Potencial sensibilizante con uso repetido." },
+  "PENTYLENE GLYCOL": { nombre:"Pentilengliicol", funcion:"Humectante con propiedades conservantes auxiliares.", natural:false, nota:"Glicol sintético. No apto COSMOS.", categoria:"Humectante" },
+  "HEXYLENE GLYCOL": { nombre:"Hexilenglicol", funcion:"Solvente y humectante.", natural:false, nota:"Glicol sintético. No apto COSMOS.", categoria:"Solvente" },
+  "DIPROPYLENE GLYCOL": { nombre:"Dipropilenglicol", funcion:"Solvente, humectante y carrier de fragancias.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Solvente" },
+
+  // ─── ACTIVOS ────────────────────────────────────────────────────────────────
+  "NIACINAMIDE": { nombre:"Niacinamida (vitamina B3)", funcion:"Regula sebo, unifica el tono, minimiza poros, refuerza barrera cutánea y reduce manchas.", natural:true, nota:"Vitamina. Versión sintética idéntica a la natural; muchas certificaciones COSMOS la aceptan.", categoria:"Activo" },
+  "RETINOL": { nombre:"Retinol (vitamina A)", funcion:"Antienvejecimiento potente. Acelera renovación celular, estimula colágeno y reduce arrugas.", natural:false, nota:"Sintético en su mayoría. No apto COSMOS.", categoria:"Activo", controversia:"Fotosensibilizante. No usar en embarazo. Puede causar irritación." },
+  "RETINYL PALMITATE": { nombre:"Palmitato de retinilo", funcion:"Forma estabilizada de vitamina A. Antienvejecimiento más suave que el retinol.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Activo" },
+  "ASCORBIC ACID": { nombre:"Ácido ascórbico (vitamina C)", funcion:"Antioxidante potente. Ilumina, unifica el tono y estimula colágeno. Alta inestabilidad.", natural:true, nota:"Puede ser de fermentación vegetal. Apto COSMOS.", categoria:"Activo" },
+  "ASCORBYL GLUCOSIDE": { nombre:"Glucósido de ascorbilo", funcion:"Vitamina C estabilizada. Antioxidante e iluminador. Se convierte en vitamina C en la piel.", natural:false, nota:"Derivado semi-sintético. No siempre apto COSMOS.", categoria:"Activo" },
+  "SODIUM ASCORBYL PHOSPHATE": { nombre:"Fosfato de ascorbilo sódico (vit. C SAP)", funcion:"Vitamina C estable y suave. Antioxidante, iluminadora y estimulante de colágeno.", natural:false, nota:"Derivado semi-sintético. No apto COSMOS estrictamente.", categoria:"Activo" },
+  "ASCORBYL TETRAISOPALMITATE": { nombre:"Tetrai-isopalmitato de ascorbilo", funcion:"Vitamina C liposoluble ultra-estable. Penetra bien. Antioxidante y anti-edad.", natural:false, nota:"Éster sintético. No apto COSMOS.", categoria:"Activo" },
+  "TOCOPHEROL": { nombre:"Tocoferol (vitamina E)", funcion:"Antioxidante. Protege contra daño oxidativo, nutre y mejora la barrera cutánea.", natural:true, nota:"De origen vegetal (girasol, soja). Apto COSMOS.", categoria:"Activo / Antioxidante" },
+  "TOCOPHERYL ACETATE": { nombre:"Acetato de tocoferilo (vitamina E acetato)", funcion:"Forma estabilizada de vitamina E. Antioxidante y nutritiva.", natural:false, nota:"Éster semi-sintético. No apto COSMOS.", categoria:"Activo" },
+  "ALLANTOIN": { nombre:"Alantoína", funcion:"Calmante, cicatrizante y suavizante. Estimula regeneración celular. Reduce irritación.", natural:true, nota:"De raíz de consuelda o síntesis. Apta COSMOS si es de origen vegetal.", categoria:"Activo / Calmante" },
+  "BISABOLOL": { nombre:"Bisabolol (alfa-bisabolol)", funcion:"Calmante y antiinflamatorio. Derivado natural de la manzanilla. Reduce rojeces.", natural:true, nota:"De aceite esencial de manzanilla o síntesis. Apto COSMOS si es de origen natural.", categoria:"Activo / Calmante" },
+  "CAFFEINE": { nombre:"Cafeína", funcion:"Estimulante circulatorio, antioxidante. Reduce bolsas y ojeras. Anticelulítico.", natural:true, nota:"De origen vegetal (café, té). Apta COSMOS.", categoria:"Activo" },
+  "SALICYLIC ACID": { nombre:"Ácido salicílico", funcion:"Exfoliante BHA. Penetra en poros, controla sebo y acné. Queratolítico suave.", natural:false, nota:"Puede ser de corteza de sauce pero normalmente sintético. No apto COSMOS.", categoria:"Activo / Exfoliante", controversia:"No usar en embarazo. Puede irritar pieles sensibles." },
+  "LACTIC ACID": { nombre:"Ácido láctico", funcion:"Exfoliante AHA suave. Hidrata y mejora textura. Más suave que el ácido glicólico.", natural:true, nota:"De fermentación. Apto COSMOS.", categoria:"Activo / Exfoliante" },
+  "GLYCOLIC ACID": { nombre:"Ácido glicólico", funcion:"Exfoliante AHA potente. Renueva superficie, unifica tono y estimula colágeno.", natural:true, nota:"De fermentación (caña de azúcar). Apto COSMOS.", categoria:"Activo / Exfoliante" },
+  "AZELAIC ACID": { nombre:"Ácido azelaico", funcion:"Antiinflamatorio, despigmentante y antiséptico. Eficaz en rosácea y acné.", natural:false, nota:"Normalmente sintético. No apto COSMOS.", categoria:"Activo" },
+  "KOJIC ACID": { nombre:"Ácido kójico", funcion:"Despigmentante. Inhibe la tirosinasa, reduce manchas y unifica el tono.", natural:true, nota:"De fermentación fúngica. Apto COSMOS.", categoria:"Activo" },
+  "ALPHA-ARBUTIN": { nombre:"Alfa-arbutina", funcion:"Despigmentante. Inhibe la síntesis de melanina. Más estable que la arbutina.", natural:false, nota:"Semi-sintética. No apta COSMOS.", categoria:"Activo" },
+  "ARBUTIN": { nombre:"Arbutina", funcion:"Despigmentante. De origen vegetal (gayuba).", natural:true, nota:"Extracto vegetal. Apta COSMOS.", categoria:"Activo" },
+  "RESVERATROL": { nombre:"Resveratrol", funcion:"Antioxidante potente. Antiedad y antiinflamatorio.", natural:true, nota:"De uva/cáscara. Apto COSMOS.", categoria:"Activo" },
+  "CERAMIDE NP": { nombre:"Ceramida NP", funcion:"Refuerza la barrera cutánea. Retiene humedad y repara piel seca o dañada.", natural:false, nota:"Sintética. No apta COSMOS.", categoria:"Activo" },
+  "CERAMIDE AP": { nombre:"Ceramida AP", funcion:"Refuerza la barrera cutánea junto a otras ceramidas.", natural:false, nota:"Sintética. No apta COSMOS.", categoria:"Activo" },
+  "CERAMIDE EOP": { nombre:"Ceramida EOP", funcion:"Componente clave de la barrera cutánea. Retiene agua y repara.", natural:false, nota:"Sintética. No apta COSMOS.", categoria:"Activo" },
+  "PHYTOSPHINGOSINE": { nombre:"Fitosfingosina", funcion:"Fortalece barrera cutánea. Antimicrobiana y antiinflamatoria.", natural:true, nota:"Biotecnológica (fermentación de levadura). Apta COSMOS.", categoria:"Activo" },
+  "ADENOSINE": { nombre:"Adenosina", funcion:"Antiinflamatoria y antienvejecimiento. Mejora elasticidad y suavidad.", natural:true, nota:"Biotecnológica. Apta COSMOS.", categoria:"Activo" },
+  "BAKUCHIOL": { nombre:"Bakuchiol", funcion:"Alternativa natural al retinol. Estimula colágeno, reduce arrugas sin fotosensibilidad. Apto para embarazadas.", natural:true, nota:"Extracto de semillas de Psoralea corylifolia. Apto COSMOS.", categoria:"Activo" },
+  "PDRN": { nombre:"PDRN (polidesoxirribonucleótido)", funcion:"Activo regenerador. Estimula receptores A2A, promueve proliferación celular y síntesis de colágeno.", natural:true, nota:"Obtenido de ADN de salmón o biotecnología. Compatibilidad COSMOS variable según origen.", categoria:"Activo" },
+  "EPIDERMAL GROWTH FACTOR": { nombre:"Factor de crecimiento epidérmico (EGF)", funcion:"Estimula regeneración celular y síntesis de colágeno.", natural:false, nota:"Biotecnológico (recombinante). No apto COSMOS.", categoria:"Activo" },
+  "COLLAGEN": { nombre:"Colágeno hidrolizado", funcion:"Forma una película protectora. Hidrata la superficie cutánea.", natural:true, nota:"Marino o bovino. Marino apto COSMOS si es certificado.", categoria:"Activo / Film-forming" },
+  "HYDROLYZED COLLAGEN": { nombre:"Colágeno hidrolizado", funcion:"Hidratante superficial. Mejora textura.", natural:true, nota:"Animal (marino o bovino). El marino apto COSMOS.", categoria:"Activo" },
+  "HYDROLYZED ELASTIN": { nombre:"Elastina hidrolizada", funcion:"Hidratante y film-forming. Mejora elasticidad superficial.", natural:true, nota:"Animal. Compatible COSMOS si es marino certificado.", categoria:"Activo" },
+  "HYDROLYZED KERATIN": { nombre:"Queratina hidrolizada", funcion:"Repara y fortalece cabello y piel.", natural:true, nota:"Animal o vegetal. La vegetal es apta COSMOS.", categoria:"Activo" },
+  "ACETYL HEXAPEPTIDE-3": { nombre:"Acetil hexapéptido-3 (Argireline)", funcion:"Péptido antiarrugas. Relaja microtensiones musculares. Botox-like.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Activo" },
+  "PALMITOYL PENTAPEPTIDE-4": { nombre:"Palmitoil pentapéptido-4 (Matrixyl)", funcion:"Estimula colágeno y elastina. Antienvejecimiento.", natural:false, nota:"Péptido sintético. No apto COSMOS.", categoria:"Activo" },
+  "DIPOTASSIUM GLYCYRRHIZATE": { nombre:"Glicirrizato dipotásico", funcion:"Calmante y antiinflamatorio. Derivado del regaliz.", natural:true, nota:"Extracto de regaliz. Apto COSMOS.", categoria:"Activo / Calmante" },
+  "CENTELLA ASIATICA EXTRACT": { nombre:"Extracto de centella asiática", funcion:"Calmante, cicatrizante y antiinflamatorio. Estimula colágeno.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Activo / Extracto vegetal" },
+  "MADECASSOSIDE": { nombre:"Madecasósido", funcion:"Principio activo de la centella. Calmante y regenerador.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Activo" },
+  "ASIATICOSIDE": { nombre:"Asiatricósido", funcion:"Activo de centella asiática. Cicatrizante y estimulante de colágeno.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Activo" },
+
+  // ─── ACEITES / EMOLIENTES NATURALES ─────────────────────────────────────────
+  "SQUALANE": { nombre:"Escualano", funcion:"Emoliente ultraligero. Imita el sebo natural. Hidrata sin comedogenidad.", natural:true, nota:"De oliva, caña de azúcar o tiburón (vegetal es apto COSMOS).", categoria:"Emoliente" },
+  "JOJOBA SEED OIL": { nombre:"Aceite de jojoba", funcion:"Emoliente y regulador de sebo. Técnicamente una cera líquida. Alta estabilidad.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "SIMMONDSIA CHINENSIS SEED OIL": { nombre:"Aceite de jojoba", funcion:"Emoliente, regula sebo. Alta estabilidad oxidativa.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "ROSA CANINA FRUIT OIL": { nombre:"Aceite de rosa mosqueta", funcion:"Regenerante, antiedad. Rico en ácido linoleico y vitamina A natural. Reduce cicatrices.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente / Activo" },
+  "ROSEHIP SEED OIL": { nombre:"Aceite de rosa mosqueta", funcion:"Regenerante y antiedad. Reduce cicatrices y manchas.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "ARGANIA SPINOSA KERNEL OIL": { nombre:"Aceite de argán", funcion:"Nutritivo, antioxidante. Rico en tocoferoles. Suaviza y aporta brillo.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "COCOS NUCIFERA OIL": { nombre:"Aceite de coco", funcion:"Emoliente, nutritivo. Alto contenido en ácido láurico. Antimicrobiano leve.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente", controversia:"Comedogénico (índice 4/5). Evitar en pieles acneicas." },
+  "HELIANTHUS ANNUUS SEED OIL": { nombre:"Aceite de girasol", funcion:"Emoliente suave. Rico en vitamina E y ácido linoleico. Refuerza barrera cutánea.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "PRUNUS AMYGDALUS DULCIS OIL": { nombre:"Aceite de almendras dulces", funcion:"Emoliente nutritivo y calmante. Ideal para piel sensible.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "SWEET ALMOND OIL": { nombre:"Aceite de almendras dulces", funcion:"Emoliente nutritivo. Suaviza e hidrata.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "CAMELLIA SINENSIS LEAF OIL": { nombre:"Aceite de camelia", funcion:"Emoliente suave y nutritivo. Antioxidante.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "MARULA OIL": { nombre:"Aceite de marula", funcion:"Emoliente antioxidante. Rico en ácido oleico. Absorción rápida.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "SEA BUCKTHORN OIL": { nombre:"Aceite de espino amarillo", funcion:"Nutritivo y regenerador. Rico en carotenoides y omega 7.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente / Activo" },
+  "HIPPOPHAE RHAMNOIDES FRUIT OIL": { nombre:"Aceite de espino amarillo", funcion:"Regenerador. Muy rico en antioxidantes.", natural:true, nota:"Aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "CAPRYLIC/CAPRIC TRIGLYCERIDE": { nombre:"Triglicérido caprílico/cáprico (TCM)", funcion:"Emoliente ligero y solvente. Vehiculiza activos liposolubles. No comedogénico.", natural:true, nota:"Fracción de aceite de coco o palma. Apto COSMOS si es de origen vegetal certificado.", categoria:"Emoliente / Solvente" },
+  "CETEARYL ALCOHOL": { nombre:"Alcohol cetearílico", funcion:"Emoliente y co-emulsionante. Espesa y estabiliza emulsiones.", natural:true, nota:"De aceite de coco o palma. Apto COSMOS.", categoria:"Emoliente / Emulsionante" },
+  "CETYL ALCOHOL": { nombre:"Alcohol cetílico", funcion:"Emoliente, espesante y estabilizante de emulsiones.", natural:true, nota:"Derivado de coco. Apto COSMOS.", categoria:"Emoliente / Emulsionante" },
+  "STEARYL ALCOHOL": { nombre:"Alcohol estearílico", funcion:"Emoliente y co-emulsionante.", natural:true, nota:"De aceite vegetal. Apto COSMOS.", categoria:"Emoliente" },
+  "ISOPROPYL MYRISTATE": { nombre:"Miristato de isopropilo", funcion:"Emoliente y solvente. Da sensación sedosa y no grasa.", natural:false, nota:"Éster sintético. No apto COSMOS.", categoria:"Emoliente", controversia:"Comedogénico moderado." },
+  "ISOPROPYL PALMITATE": { nombre:"Palmitato de isopropilo", funcion:"Emoliente ligero. Mejora la extensibilidad.", natural:false, nota:"Éster semi-sintético. No apto COSMOS.", categoria:"Emoliente" },
+  "DIMETHICONE": { nombre:"Dimeticona (silicona)", funcion:"Emoliente, suavizante y formador de barrera. Da sensación sedosa y aterciopelada.", natural:false, nota:"Silicona sintética. No apta COSMOS ni NATRUE.", categoria:"Emoliente / Film-forming", controversia:"No biodegradable. Puede taponar poros en concentraciones altas." },
+  "CYCLOPENTASILOXANE": { nombre:"Ciclopentasiloxano (D5)", funcion:"Solvente volátil de silicona. Vehiculiza activos y da sensación seca.", natural:false, nota:"Silicona sintética. No apta COSMOS.", categoria:"Solvente", controversia:"Persistente en el ambiente. Regulado en la UE por preocupaciones medioambientales." },
+  "CYCLOHEXASILOXANE": { nombre:"Ciclohexasiloxano (D6)", funcion:"Solvente de silicona volátil.", natural:false, nota:"Silicona. No apta COSMOS.", categoria:"Solvente", controversia:"Regulada en la UE." },
+  "PHENYL TRIMETHICONE": { nombre:"Fenil trimetilsiloxano", funcion:"Silicona que aporta brillo y suavidad.", natural:false, nota:"Silicona. No apta COSMOS.", categoria:"Emoliente" },
+
+  // ─── MANTECAS / CERAS ───────────────────────────────────────────────────────
+  "BUTYROSPERMUM PARKII BUTTER": { nombre:"Manteca de karité", funcion:"Nutritiva, emoliente y reparadora. Muy rica en ácidos grasos y tocoferoles.", natural:true, nota:"Grasa vegetal. Apta COSMOS.", categoria:"Emoliente / Oclusivo" },
+  "SHEA BUTTER": { nombre:"Manteca de karité", funcion:"Nutritiva y reparadora. Ideal para piel seca y atópica.", natural:true, nota:"Grasa vegetal. Apta COSMOS.", categoria:"Emoliente" },
+  "MANGIFERA INDICA SEED BUTTER": { nombre:"Manteca de mango", funcion:"Emoliente, nutritiva. Rica en ácido esteárico y oleico.", natural:true, nota:"Grasa vegetal. Apta COSMOS.", categoria:"Emoliente" },
+  "THEOBROMA CACAO SEED BUTTER": { nombre:"Manteca de cacao", funcion:"Emoliente, nutritiva y oclusiva.", natural:true, nota:"Grasa vegetal. Apta COSMOS.", categoria:"Emoliente" },
+  "CERA ALBA": { nombre:"Cera de abeja", funcion:"Espesante, oclusivo y film-forming. Protege y sella la hidratación.", natural:true, nota:"De origen animal (abejas). Apta COSMOS.", categoria:"Espesante / Oclusivo" },
+  "BEESWAX": { nombre:"Cera de abeja", funcion:"Espesante y protector de barrera.", natural:true, nota:"Animal. Apta COSMOS.", categoria:"Espesante" },
+  "CARNAUBA WAX": { nombre:"Cera de carnauba", funcion:"Espesante vegetal, film-forming y texturizante.", natural:true, nota:"Vegetal. Apta COSMOS.", categoria:"Espesante" },
+  "COPERNICIA CERIFERA CERA": { nombre:"Cera de carnauba", funcion:"Texturizante y espesante vegetal.", natural:true, nota:"Vegetal. Apta COSMOS.", categoria:"Espesante" },
+  "CANDELILLA WAX": { nombre:"Cera de candelilla", funcion:"Espesante vegetal. Alternativa vegana a la cera de abeja.", natural:true, nota:"Vegetal. Apta COSMOS.", categoria:"Espesante" },
+  "EUPHORBIA CERIFERA CERA": { nombre:"Cera de candelilla", funcion:"Espesante y texturizante vegetal.", natural:true, nota:"Vegetal. Apta COSMOS.", categoria:"Espesante" },
+
+  // ─── EMULSIONANTES ──────────────────────────────────────────────────────────
+  "GLYCERYL STEARATE": { nombre:"Estearato de glicerilo", funcion:"Emulsionante O/W y co-emulsionante. Estabiliza emulsiones y mejora textura.", natural:true, nota:"Derivado de glicerina vegetal y ácido esteárico. Apto COSMOS.", categoria:"Emulsionante" },
+  "GLYCERYL STEARATE SE": { nombre:"Estearato de glicerilo SE (autoemulsionante)", funcion:"Emulsionante con capacidad autoemulsionante. Puede crear sensación de pilling.", natural:true, nota:"Derivado vegetal. Apto COSMOS, aunque la versión SE lleva jabón sódico.", categoria:"Emulsionante", controversia:"La versión SE puede causar efecto pilling/bolitas al aplicar." },
+  "PEG-100 STEARATE": { nombre:"PEG-100 estearato", funcion:"Emulsionante O/W estabilizante.", natural:false, nota:"PEG (polietilenglicol) derivado del petróleo. No apto COSMOS.", categoria:"Emulsionante", controversia:"Los PEG pueden contener impurezas (1,4-dioxano, óxido de etileno) según calidad de fabricación." },
+  "POLYSORBATE 20": { nombre:"Polisorbato 20", funcion:"Emulsionante y solubilizante. Solubiliza fragancias y aceites esenciales en agua.", natural:false, nota:"PEG derivado. No apto COSMOS.", categoria:"Emulsionante / Solubilizante" },
+  "POLYSORBATE 60": { nombre:"Polisorbato 60", funcion:"Emulsionante O/W.", natural:false, nota:"PEG derivado. No apto COSMOS.", categoria:"Emulsionante" },
+  "POLYSORBATE 80": { nombre:"Polisorbate 80", funcion:"Emulsionante y solubilizante.", natural:false, nota:"PEG derivado. No apto COSMOS.", categoria:"Emulsionante" },
+  "STEARETH-2": { nombre:"Esteareth-2", funcion:"Co-emulsionante W/O.", natural:false, nota:"PEG derivado. No apto COSMOS.", categoria:"Emulsionante" },
+  "STEARETH-21": { nombre:"Esteareth-21", funcion:"Emulsionante O/W.", natural:false, nota:"PEG derivado. No apto COSMOS.", categoria:"Emulsionante" },
+  "CETEARETH-20": { nombre:"Ceteareth-20", funcion:"Emulsionante. Muy usado en cosméticos convencionales.", natural:false, nota:"PEG derivado. No apto COSMOS.", categoria:"Emulsionante" },
+  "LECITHIN": { nombre:"Lecitina", funcion:"Emulsionante natural. Nutritiva y potenciadora de penetración.", natural:true, nota:"De soja o girasol. Apta COSMOS.", categoria:"Emulsionante" },
+  "SUCROSE STEARATE": { nombre:"Estearato de sacarosa", funcion:"Emulsionante O/W suave de origen natural.", natural:true, nota:"Derivado de azúcar y ácido esteárico vegetal. Apto COSMOS.", categoria:"Emulsionante" },
+  "CETEARYL GLUCOSIDE": { nombre:"Glucósido de cetearilo", funcion:"Emulsionante natural O/W. Base de emulsionantes tipo Ecomulse.", natural:true, nota:"Derivado vegetal. Apto COSMOS.", categoria:"Emulsionante" },
+  "SODIUM STEAROYL GLUTAMATE": { nombre:"Estearoil glutamato de sodio", funcion:"Emulsionante suave de origen natural. Apto para fórmulas naturales.", natural:true, nota:"Derivado de glutamato y ácido esteárico vegetal. Apto COSMOS.", categoria:"Emulsionante" },
+  "OLIVEM 1000": { nombre:"Olivem 1000 (olivato de cetearilo)", funcion:"Emulsionante natural O/W derivado del aceite de oliva. Muy popular en cosmética natural.", natural:true, nota:"Derivado del olivo. Apto COSMOS.", categoria:"Emulsionante" },
+  "CETEARYL OLIVATE": { nombre:"Olivato de cetearilo", funcion:"Emulsionante O/W de origen natural.", natural:true, nota:"Derivado del aceite de oliva. Apto COSMOS.", categoria:"Emulsionante" },
+  "SORBITAN OLIVATE": { nombre:"Olivato de sorbitán", funcion:"Co-emulsionante natural. Usado con olivato de cetearilo.", natural:true, nota:"Derivado vegetal. Apto COSMOS.", categoria:"Emulsionante" },
+
+  // ─── ESPESANTES / TEXTURIZANTES ─────────────────────────────────────────────
+  "CARBOMER": { nombre:"Carbómero", funcion:"Gelificante y espesante sintético. Forma geles transparentes.", natural:false, nota:"Polímero acrílico sintético. No apto COSMOS.", categoria:"Espesante" },
+  "CARBOPOL": { nombre:"Carbopol (carbómero)", funcion:"Gelificante. Crea texturas gel.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Espesante" },
+  "ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER": { nombre:"Polímero acrílico reticulado", funcion:"Espesante y estabilizante de emulsiones.", natural:false, nota:"Polímero sintético. No apto COSMOS.", categoria:"Espesante" },
+  "XANTHAN GUM": { nombre:"Goma xantana", funcion:"Espesante y estabilizante de origen natural (fermentación).", natural:true, nota:"Fermentación bacteriana. Apta COSMOS.", categoria:"Espesante" },
+  "HYDROXYETHYLCELLULOSE": { nombre:"Hidroxietilcelulosa (HEC)", funcion:"Espesante y gelificante semisintético de celulosa.", natural:false, nota:"Semi-sintético de celulosa. No siempre apto COSMOS.", categoria:"Espesante" },
+  "HYDROXYPROPYL METHYLCELLULOSE": { nombre:"Hidroxipropil metilcelulosa (HPMC)", funcion:"Espesante y film-forming.", natural:false, nota:"Semi-sintético. No apto COSMOS.", categoria:"Espesante" },
+  "CELLULOSE": { nombre:"Celulosa", funcion:"Espesante y absorbente.", natural:true, nota:"Vegetal. Apta COSMOS.", categoria:"Espesante" },
+  "AGAR": { nombre:"Agar", funcion:"Gelificante vegetal.", natural:true, nota:"Alga marina. Apto COSMOS.", categoria:"Espesante" },
+  "CARRAGEENAN": { nombre:"Carragenano", funcion:"Espesante y gelificante marino.", natural:true, nota:"Alga marina. Apto COSMOS.", categoria:"Espesante" },
+  "GUAR GUM": { nombre:"Goma guar", funcion:"Espesante y suavizante.", natural:true, nota:"Leguminosa. Apta COSMOS.", categoria:"Espesante" },
+
+  // ─── CONSERVANTES ───────────────────────────────────────────────────────────
+  "PHENOXYETHANOL": { nombre:"Fenoxietanol", funcion:"Conservante amplio espectro. Muy estable y compatible.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante", controversia:"No recomendado para bebés ni lactantes según SCCS." },
+  "ETHYLHEXYLGLYCERIN": { nombre:"Etilhexilglicerina", funcion:"Conservante auxiliar y humectante. Potencia otros conservantes.", natural:false, nota:"Semi-sintético. No apto COSMOS como conservante primario.", categoria:"Conservante" },
+  "ETHYLHEXYLGLYCERIN/PHENOXYETHANOL": { nombre:"Euxyl PE 9010 (fenoxietanol + etilhexilglicerina)", funcion:"Sistema conservante amplio espectro. Fenoxietanol al 90% + etilhexilglicerina al 10%.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante" },
+  "CAPRYLYL GLYCOL": { nombre:"Caprililglicol", funcion:"Conservante auxiliar, humectante y emoliente. Potencia otros sistemas.", natural:false, nota:"Semi-sintético. No apto COSMOS.", categoria:"Conservante" },
+  "BENZYL ALCOHOL": { nombre:"Alcohol bencílico", funcion:"Conservante. También funciona como solvente y fijador de fragancia.", natural:true, nota:"Apto COSMOS en combinación con otros conservantes. Limitado al 1%.", categoria:"Conservante", controversia:"No usar en bebés. Puede ser irritante." },
+  "DEHYDROACETIC ACID": { nombre:"Ácido deshidroacético", funcion:"Conservante frente a hongos y levaduras.", natural:false, nota:"Sintético. No apto COSMOS como conservante.", categoria:"Conservante" },
+  "SODIUM BENZOATE": { nombre:"Benzoato de sodio", funcion:"Conservante antimicrobiano. Activo en pH ácido.", natural:true, nota:"De origen natural (frutos del bosque). Apto COSMOS.", categoria:"Conservante", controversia:"En combinación con vitamina C puede formar benzeno (traza, pero vigilar)." },
+  "POTASSIUM SORBATE": { nombre:"Sorbato de potasio", funcion:"Conservante antifúngico. Activo en pH ácido.", natural:true, nota:"De bayas de serbal. Apto COSMOS.", categoria:"Conservante" },
+  "GEOGARD ECT": { nombre:"Geogard ECT (benzil alcohol + ácido salicílico + ácido glicólico + ácido ascórbico)", funcion:"Sistema conservante natural amplio espectro para cosmética certificada.", natural:true, nota:"Aprobado COSMOS y NATRUE.", categoria:"Conservante" },
+  "LEUCONOSTOC/RADISH ROOT FERMENT FILTRATE": { nombre:"Filtrado de fermentación de rábano", funcion:"Conservante natural por fermentación. Activo antimicrobiano suave.", natural:true, nota:"Fermentación natural. Apto COSMOS.", categoria:"Conservante" },
+  "METHYLPARABEN": { nombre:"Metilparabeno", funcion:"Conservante antifúngico.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante", controversia:"Posible disruptor endocrino. Prohibido en cosméticos infantiles en varios países." },
+  "PROPYLPARABEN": { nombre:"Propilparabeno", funcion:"Conservante antibacteriano.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante", controversia:"Posible disruptor endocrino." },
+  "BUTYLPARABEN": { nombre:"Butilparabeno", funcion:"Conservante.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante", controversia:"Disruptor endocrino. Muy restringido o prohibido en la UE." },
+  "IMIDAZOLIDINYL UREA": { nombre:"Imidazolidinilúrea", funcion:"Conservante liberador de formaldehído.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante", controversia:"Libera formaldehído. Potencial sensibilizante y carcinógeno en concentración." },
+  "DMDM HYDANTOIN": { nombre:"DMDM Hidantoína", funcion:"Conservante liberador de formaldehído.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante", controversia:"Libera formaldehído. Creciente restricción regulatoria." },
+  "CHLORPHENESIN": { nombre:"Clorfenesina", funcion:"Conservante antifúngico.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Conservante" },
+
+  // ─── FRAGANCIAS / ACEITES ESENCIALES ────────────────────────────────────────
+  "PARFUM": { nombre:"Fragancia / Perfume", funcion:"Aporta aroma al producto.", natural:false, nota:"Mezcla sintética generalmente. No apta COSMOS a menos que sea 100% natural y declarada.", categoria:"Fragancia", controversia:"Puede contener alérgenos. Las personas sensibles deben verificar los componentes." },
+  "FRAGRANCE": { nombre:"Fragancia", funcion:"Aporta aroma.", natural:false, nota:"Generalmente sintética. No apta COSMOS.", categoria:"Fragancia" },
+  "LIMONENE": { nombre:"Limoneno", funcion:"Componente aromático natural de cítricos. Aroma fresco.", natural:true, nota:"De origen natural pero debe declararse como alérgeno potencial en la UE.", categoria:"Fragancia / Alérgeno", controversia:"Alérgeno declarable obligatorio en la UE. Puede sensibilizar." },
+  "LINALOOL": { nombre:"Linalool", funcion:"Componente aromático floral. Presente en lavanda y otros.", natural:true, nota:"De origen natural pero alérgeno declarable en la UE.", categoria:"Fragancia / Alérgeno", controversia:"Alérgeno declarable en la UE." },
+  "CITRONELLOL": { nombre:"Citronelol", funcion:"Componente aromático de rosa y geranio.", natural:true, nota:"Natural, pero alérgeno declarable.", categoria:"Fragancia / Alérgeno", controversia:"Alérgeno declarable en la UE." },
+  "GERANIOL": { nombre:"Geraniol", funcion:"Componente aromático floral. Presente en aceite de geranio.", natural:true, nota:"Natural, pero alérgeno declarable.", categoria:"Fragancia / Alérgeno", controversia:"Alérgeno declarable en la UE." },
+
+  // ─── FILTROS SOLARES ─────────────────────────────────────────────────────────
+  "ZINC OXIDE": { nombre:"Óxido de zinc", funcion:"Filtro solar mineral físico UVA+UVB. También calmante y antiséptico.", natural:true, nota:"Mineral. Apto COSMOS. Preferir nanofree.", categoria:"Filtro solar" },
+  "TITANIUM DIOXIDE": { nombre:"Dióxido de titanio", funcion:"Filtro solar mineral físico UVA+UVB. También opacificante.", natural:true, nota:"Mineral. Apto COSMOS. Preferir nanofree.", categoria:"Filtro solar", controversia:"La forma nano es controvertida por posible penetración cutánea." },
+  "AVOBENZONE": { nombre:"Avobenzona (Butyl Methoxydibenzoylmethane)", funcion:"Filtro UVA químico. Inestable sin estabilizadores.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Filtro solar" },
+  "OCTOCRYLENE": { nombre:"Octocrileno", funcion:"Filtro UVB químico y estabilizador de avobenzona.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Filtro solar", controversia:"Posible disruptor endocrino. En estudio regulatorio en la UE." },
+  "HOMOSALATE": { nombre:"Homosalato", funcion:"Filtro UVB químico.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Filtro solar", controversia:"Posible disruptor endocrino." },
+
+  // ─── REGULADORES DE pH ──────────────────────────────────────────────────────
+  "CITRIC ACID": { nombre:"Ácido cítrico", funcion:"Regulador de pH. También quelante y antioxidante leve.", natural:true, nota:"De fermentación cítrica. Apto COSMOS.", categoria:"Regulador pH" },
+  "SODIUM HYDROXIDE": { nombre:"Hidróxido de sodio (sosa)", funcion:"Regulador de pH. Alcaliniza formulaciones.", natural:false, nota:"Sintético. Procesado de origen mineral. Uso en pequeñas cantidades aceptado en COSMOS.", categoria:"Regulador pH" },
+  "TRIETHANOLAMINE": { nombre:"Trietanolamina (TEA)", funcion:"Regulador de pH y emulsionante.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Regulador pH", controversia:"Puede reaccionar con nitritos formando nitrosaminas." },
+  "POTASSIUM HYDROXIDE": { nombre:"Hidróxido de potasio (potasa)", funcion:"Regulador de pH. Usado en saponificación.", natural:false, nota:"Mineral. Aceptado en COSMOS para regular pH.", categoria:"Regulador pH" },
+
+  // ─── SURFACTANTES ───────────────────────────────────────────────────────────
+  "SODIUM LAURYL SULFATE": { nombre:"Lauril sulfato de sodio (SLS)", funcion:"Surfactante espumante potente. Limpia en profundidad.", natural:false, nota:"Derivado del petróleo o coco pero altamente procesado. No apto COSMOS.", categoria:"Surfactante", controversia:"Irritante cutáneo y ocular con uso frecuente. Altera el microbioma cutáneo." },
+  "SODIUM LAURETH SULFATE": { nombre:"Laureth sulfato de sodio (SLES)", funcion:"Surfactante espumante suavizado. Más suave que el SLS.", natural:false, nota:"Derivado etoxilado. No apto COSMOS.", categoria:"Surfactante", controversia:"Puede contener impurezas (1,4-dioxano). Irritante en uso frecuente." },
+  "COCO GLUCOSIDE": { nombre:"Coco glucósido", funcion:"Surfactante suave de origen vegetal. Adecuado para piel sensible.", natural:true, nota:"Derivado de coco y glucosa. Apto COSMOS.", categoria:"Surfactante" },
+  "DECYL GLUCOSIDE": { nombre:"Decil glucósido", funcion:"Surfactante suave. No irritante. Adecuado para fórmulas naturales.", natural:true, nota:"Derivado vegetal. Apto COSMOS.", categoria:"Surfactante" },
+  "LAURYL GLUCOSIDE": { nombre:"Lauril glucósido", funcion:"Surfactante de origen vegetal. Limpiador suave.", natural:true, nota:"Derivado vegetal. Apto COSMOS.", categoria:"Surfactante" },
+  "SODIUM COCOYL ISETHIONATE": { nombre:"Cocoil isethionato sódico", funcion:"Surfactante suave derivado del aceite de coco. Poco irritante.", natural:false, nota:"Semi-sintético. No siempre apto COSMOS.", categoria:"Surfactante" },
+  "COCAMIDOPROPYL BETAINE": { nombre:"Cocamidopropil betaína", funcion:"Surfactante anfotérico suave. Espumante y acondicionador.", natural:false, nota:"Semi-sintético de coco. No apto COSMOS.", categoria:"Surfactante" },
+
+  // ─── COLORANTES ─────────────────────────────────────────────────────────────
+  "CI 77891": { nombre:"CI 77891 (dióxido de titanio)", funcion:"Colorante blanco opacificante y pigmento solar mineral.", natural:true, nota:"Mineral. Apto COSMOS.", categoria:"Colorante / Pigmento" },
+  "CI 77491": { nombre:"CI 77491 (óxido de hierro rojo)", funcion:"Pigmento mineral rojo.", natural:true, nota:"Mineral. Apto COSMOS.", categoria:"Colorante / Pigmento" },
+  "CI 77492": { nombre:"CI 77492 (óxido de hierro amarillo)", funcion:"Pigmento mineral amarillo.", natural:true, nota:"Mineral. Apto COSMOS.", categoria:"Colorante / Pigmento" },
+  "CI 77499": { nombre:"CI 77499 (óxido de hierro negro)", funcion:"Pigmento mineral negro.", natural:true, nota:"Mineral. Apto COSMOS.", categoria:"Colorante / Pigmento" },
+  "CI 19140": { nombre:"CI 19140 (tartrazina)", funcion:"Colorante amarillo sintético.", natural:false, nota:"Colorante azoico sintético. No apto COSMOS.", categoria:"Colorante", controversia:"Puede causar reacciones en personas sensibles a la aspirina." },
+  "CI 16035": { nombre:"CI 16035 (rojo 40)", funcion:"Colorante rojo sintético.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Colorante" },
+  "CI 42090": { nombre:"CI 42090 (azul 1)", funcion:"Colorante azul sintético.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Colorante" },
+
+  // ─── EXTRACTOS VEGETALES ────────────────────────────────────────────────────
+  "ALOE BARBADENSIS LEAF JUICE": { nombre:"Jugo de aloe vera", funcion:"Calmante, hidratante y cicatrizante. Refrescante y antiinflamatorio.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "ALOE VERA": { nombre:"Aloe vera", funcion:"Calmante e hidratante.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "ALOE BARBADENSIS LEAF EXTRACT": { nombre:"Extracto de aloe vera", funcion:"Calmante, hidratante. Concentrado.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "CHAMOMILLA RECUTITA FLOWER EXTRACT": { nombre:"Extracto de manzanilla", funcion:"Calmante y antiinflamatorio. Ideal para piel sensible.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "GREEN TEA EXTRACT": { nombre:"Extracto de té verde", funcion:"Antioxidante potente. Ricos en catequinas.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "CAMELLIA SINENSIS LEAF EXTRACT": { nombre:"Extracto de té verde", funcion:"Antioxidante, antiinflamatorio.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "CALENDULA OFFICINALIS FLOWER EXTRACT": { nombre:"Extracto de caléndula", funcion:"Calmante, cicatrizante y antiinflamatorio.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "HYPERICUM PERFORATUM EXTRACT": { nombre:"Extracto de hipérico (hierba de San Juan)", funcion:"Calmante y cicatrizante.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "HAMAMELIS VIRGINIANA EXTRACT": { nombre:"Extracto de hamamelis", funcion:"Astringente, calmante y antioxidante.", natural:true, nota:"Extracto vegetal. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "SEA KELP EXTRACT": { nombre:"Extracto de alga kelp", funcion:"Hidratante, remineralizante y antioxidante.", natural:true, nota:"Alga marina. Apto COSMOS.", categoria:"Extracto vegetal" },
+  "SACCHAROMYCES FERMENT": { nombre:"Fermentado de saccharomyces", funcion:"Activo biotecnológico. Hidratante y reforzante de barrera.", natural:true, nota:"Fermentación natural. Apto COSMOS.", categoria:"Activo" },
+  "BETA-GLUCAN": { nombre:"Beta-glucano", funcion:"Calmante, inmunomodulador y humectante. Estimula defensas cutáneas.", natural:true, nota:"De avena o levadura. Apto COSMOS.", categoria:"Activo" },
+
+  // ─── MINERALES ──────────────────────────────────────────────────────────────
+  "MICA": { nombre:"Mica", funcion:"Pigmento mineral. Aporta efecto luminoso, nacarado o brillante.", natural:true, nota:"Mineral. Apto COSMOS.", categoria:"Pigmento mineral" },
+  "KAOLIN": { nombre:"Caolín (arcilla blanca)", funcion:"Absorbente de sebo, purificante y suavizante.", natural:true, nota:"Mineral. Apto COSMOS.", categoria:"Absorbente / Mineral" },
+  "BENTONITE": { nombre:"Bentonita", funcion:"Arcilla absorbente. Purifica y desintoxica.", natural:true, nota:"Mineral. Apta COSMOS.", categoria:"Absorbente / Mineral" },
+  "TALC": { nombre:"Talco", funcion:"Absorbente, deslizante y suavizante.", natural:true, nota:"Mineral. La calidad cosmética debe ser asbestofree.", categoria:"Absorbente", controversia:"Controversia sobre posible contaminación con asbesto en minas no certificadas. Evitar en zona genital." },
+  "SILICA": { nombre:"Sílice", funcion:"Absorbente de sebo, mattificante. Mejora deslizamiento.", natural:true, nota:"Mineral. Apto COSMOS.", categoria:"Absorbente" },
+  "IRON OXIDES": { nombre:"Óxidos de hierro", funcion:"Pigmentos minerales para coloración.", natural:true, nota:"Mineral. Aptos COSMOS.", categoria:"Pigmento mineral" },
+  "MAGNESIUM STEARATE": { nombre:"Estearato de magnesio", funcion:"Deslizante y lubricante. Usado en polvos.", natural:true, nota:"Derivado vegetal/mineral. Apto COSMOS.", categoria:"Lubricante" },
+
+  // ─── ACTIVOS ESPECIALES ──────────────────────────────────────────────────────
+  "ZINC PCA": { nombre:"PCA de zinc", funcion:"Regula sebo, antimicrobiano y antiacné.", natural:false, nota:"Semi-sintético. No apto COSMOS como tal.", categoria:"Activo" },
+  "SODIUM PCA": { nombre:"PCA de sodio", funcion:"Factor de hidratación natural (NMF). Humectante potente.", natural:true, nota:"Aminoácido. Apto COSMOS.", categoria:"Humectante" },
+  "NIACINAMIDE (VITAMIN B3)": { nombre:"Niacinamida", funcion:"Multifuncional: poros, manchas, sebo, barrera.", natural:true, nota:"Vitamina. Aceptada en COSMOS.", categoria:"Activo" },
+  "FERULIC ACID": { nombre:"Ácido ferúlico", funcion:"Antioxidante. Potencia y estabiliza vitaminas C y E.", natural:true, nota:"De salvado de arroz. Apto COSMOS.", categoria:"Activo / Antioxidante" },
+  "COENZYME Q10": { nombre:"Coenzima Q10 (ubiquinona)", funcion:"Antioxidante celular. Antiedad y energizante.", natural:false, nota:"Sintético o de fermentación. No siempre apto COSMOS.", categoria:"Activo" },
+  "UBIQUINONE": { nombre:"Ubiquinona (CoQ10)", funcion:"Antioxidante mitocondrial. Antiedad.", natural:false, nota:"Biotecnológico. Compatibilidad COSMOS variable.", categoria:"Activo" },
+  "TRANEXAMIC ACID": { nombre:"Ácido tranexámico", funcion:"Despigmentante. Inhibe producción de melanina.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Activo" },
+  "POLYGLUTAMIC ACID": { nombre:"Ácido poliglutámico", funcion:"Humectante de alto peso molecular. Forma film hidratante.", natural:true, nota:"Fermentación bacteriana. Apto COSMOS.", categoria:"Humectante" },
+
+  // ─── ALCOHOLES ───────────────────────────────────────────────────────────────
+  "ALCOHOL": { nombre:"Alcohol etílico", funcion:"Solvente, conservante auxiliar y astringente.", natural:true, nota:"De fermentación vegetal. Apto COSMOS.", categoria:"Solvente / Conservante", controversia:"Puede resecar en concentraciones altas." },
+  "ALCOHOL DENAT.": { nombre:"Alcohol desnaturalizado", funcion:"Solvente y astringente.", natural:true, nota:"De fermentación. Apto COSMOS pero denaturante debe ser de origen natural.", categoria:"Solvente", controversia:"Puede resecar la piel." },
+  "ISOPROPYL ALCOHOL": { nombre:"Alcohol isopropílico", funcion:"Solvente.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Solvente" },
+
+  // ─── QUELANTES ────────────────────────────────────────────────────────────────
+  "DISODIUM EDTA": { nombre:"EDTA disódico", funcion:"Quelante. Estabiliza fórmulas quelando metales y potencia conservantes.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Quelante" },
+  "TETRASODIUM EDTA": { nombre:"EDTA tetrasódico", funcion:"Quelante potente.", natural:false, nota:"Sintético. No apto COSMOS.", categoria:"Quelante" },
+  "SODIUM PHYTATE": { nombre:"Fitato de sodio", funcion:"Quelante natural. Alternativa al EDTA.", natural:true, nota:"Derivado del ácido fítico (vegetal). Apto COSMOS.", categoria:"Quelante" },
+  "PHYTIC ACID": { nombre:"Ácido fítico", funcion:"Quelante y antioxidante natural.", natural:true, nota:"De cereales. Apto COSMOS.", categoria:"Quelante" }
+};
+
+function parseINCI(raw) {
+  const known = Object.keys(DB).filter(k => k.includes('/'));
+  let text = raw;
+  const placeholders = [];
+  known.forEach((name, idx) => {
+    const re = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    text = text.replace(re, () => {
+      const token = '\u0000PH' + idx + '\u0000';
+      placeholders.push({ token, value: name });
+      return token;
+    });
+  });
+  let parts = text.split(/[,;|\n\r\t·•]+/);
+  parts = parts.map(s => {
+    placeholders.forEach(p => { s = s.split(p.token).join(p.value); });
+    return s.trim();
+  });
+  return parts.filter(s => s.length > 1);
+}
+
+function clearAll() {
+  document.getElementById('inci-input').value = '';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('summary-grid').style.display = 'none';
+  document.getElementById('progress-wrap').style.display = 'none';
+}
+
+function lookup(inci) {
+  const key = inci.toUpperCase().trim();
+  if (DB[key]) return { found: true, ...DB[key] };
+  for (const dbKey of Object.keys(DB)) {
+    if (key.includes(dbKey) || dbKey.includes(key)) {
+      return { found: true, ...DB[dbKey] };
+    }
+  }
+  if (key.includes("EXTRACT") || key.includes("FRUIT") || key.includes("LEAF") || key.includes("SEED") || key.includes("FLOWER") || key.includes("ROOT") || key.includes("BARK") || key.includes("HERB")) {
+    return { found: true, nombre: toTitleCase(inci), funcion: "Extracto vegetal. Aporta propiedades activas, antioxidantes o calmantes según la planta.", natural: true, nota: "Extracto vegetal. Generalmente apto COSMOS.", categoria: "Extracto vegetal" };
+  }
+  if (key.includes("OIL") || key.includes("ACEITE")) {
+    return { found: true, nombre: toTitleCase(inci), funcion: "Aceite vegetal. Emoliente, nutritivo.", natural: true, nota: "Aceite vegetal. Verificar origen para COSMOS.", categoria: "Emoliente" };
+  }
+  if (key.includes("BUTTER")) {
+    return { found: true, nombre: toTitleCase(inci), funcion: "Manteca vegetal. Emoliente y nutritiva.", natural: true, nota: "Grasa vegetal. Apta COSMOS.", categoria: "Emoliente" };
+  }
+  return { found: false };
+}
+
+function toTitleCase(str) {
+  return str.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function analyzeINCI() {
+  const raw = document.getElementById('inci-input').value.trim();
+  if (!raw) return;
+  const ingredients = parseINCI(raw);
+  if (!ingredients.length) return;
+
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('summary-grid').style.display = 'none';
+  document.getElementById('progress-wrap').style.display = 'none';
+
+  const results = ingredients.map((inci, i) => ({ inci, index: i + 1, ...lookup(inci) }));
+  renderResults(results);
+}
+
+function renderResults(data) {
+  const found = data.filter(d => d.found);
+  const naturales = found.filter(d => d.natural).length;
+  const sinteticos = found.filter(d => !d.natural).length;
+  const notFound = data.filter(d => !d.found).length;
+  const pct = found.length > 0 ? Math.round((naturales / found.length) * 100) : 0;
+
+  document.getElementById('stat-total').textContent = data.length;
+  document.getElementById('stat-nat').textContent = naturales;
+  document.getElementById('stat-sin').textContent = sinteticos;
+  document.getElementById('stat-unk').textContent = notFound;
+  document.getElementById('stat-pct').textContent = pct + '%';
+
+  document.getElementById('summary-grid').style.display = 'grid';
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('pct-label').textContent = pct + '%';
+  setTimeout(() => { document.getElementById('progress-fill').style.width = pct + '%'; }, 100);
+
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = data.map((ing, i) => {
+    if (!ing.found) {
+      return `
+        <div class="ing-card" style="animation-delay:${i*0.03}s">
+          <div class="ing-header">
+            <div style="display:flex;gap:10px;align-items:flex-start;flex:1;min-width:0;">
+              <div class="ing-number">${ing.index}</div>
+              <div class="ing-names">
+                <div class="ing-inci">${ing.inci}</div>
+                <div class="ing-common">No encontrado en base de datos</div>
+              </div>
+            </div>
+            <span class="badge unknown">Desconocido</span>
+          </div>
+          <div class="not-found-note">Este ingrediente no está en nuestra base de datos. <a href="https://ec.europa.eu/growth/tools-databases/cosing/index.cfm?fuseaction=search.simple&search=${encodeURIComponent(ing.inci)}" target="_blank" rel="noopener">Buscá &laquo;${ing.inci}&raquo; en CosIng &rarr;</a> (base oficial de la Comisión Europea).</div>
+        </div>`;
+    }
+    const badge = ing.natural
+      ? '<span class="badge natural">Natural · Apto</span>'
+      : '<span class="badge sintetico">No natural</span>';
+    const controversia = ing.controversia
+      ? `<div class="ing-controversia">⚠ ${ing.controversia}</div>` : '';
+    const cat = ing.categoria
+      ? `<span style="font-size:0.68rem;background:var(--purple-light);color:var(--purple-mid);padding:2px 8px;border-radius:10px;font-weight:600;letter-spacing:0.06em;">${ing.categoria}</span>` : '';
+    return `
+      <div class="ing-card" style="animation-delay:${i*0.03}s">
+        <div class="ing-header">
+          <div style="display:flex;gap:10px;align-items:flex-start;flex:1;min-width:0;">
+            <div class="ing-number">${ing.index}</div>
+            <div class="ing-names">
+              <div class="ing-inci">${ing.inci}</div>
+              <div class="ing-common">${ing.nombre}</div>
+            </div>
+          </div>
+          ${badge}
+        </div>
+        <div style="margin-bottom:6px;">${cat}</div>
+        <div class="ing-funcion">${ing.funcion}</div>
+        <div class="ing-nota">${ing.nota}</div>
+        ${controversia}
+      </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
